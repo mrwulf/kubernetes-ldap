@@ -5,8 +5,9 @@ import (
 
 	"github.com/apprenda-kismatic/kubernetes-ldap/ldap"
 	"github.com/apprenda-kismatic/kubernetes-ldap/token"
-	goldap "github.com/go-ldap/ldap"
+	goldap "gopkg.in/ldap.v2"
 	"github.com/golang/glog"
+	"time"
 )
 
 // LDAPTokenIssuer issues cryptographically secure tokens after authenticating the
@@ -34,7 +35,7 @@ func (lti *LDAPTokenIssuer) ServeHTTP(resp http.ResponseWriter, req *http.Reques
 	}
 
 	// Auth was successful, create token
-	token := lti.createToken(ldapEntry)
+	token := lti.createToken(ldapEntry, user)
 
 	// Sign token and return
 	signedToken, err := lti.TokenSigner.Sign(token)
@@ -48,9 +49,10 @@ func (lti *LDAPTokenIssuer) ServeHTTP(resp http.ResponseWriter, req *http.Reques
 	resp.Write([]byte(signedToken))
 }
 
-func (lti *LDAPTokenIssuer) createToken(ldapEntry *goldap.Entry) *token.AuthToken {
+func (lti *LDAPTokenIssuer) createToken(ldapEntry *goldap.Entry, user string) *token.AuthToken {
 	return &token.AuthToken{
-		Username: ldapEntry.DN,
+		Username: user,
+		Exp: time.Now().Add(time.Hour * time.Duration(12)),
 		Assertions: map[string]string{
 			"ldapServer": lti.LDAPServer,
 			"userDN":     ldapEntry.DN,

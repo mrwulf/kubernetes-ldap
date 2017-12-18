@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/go-ldap/ldap"
+	"gopkg.in/ldap.v2"
 )
 
 // Authenticator authenticates a user against an LDAP directory
@@ -78,13 +78,14 @@ func (c *Client) Authenticate(username, password string) (*ldap.Entry, error) {
 func (c *Client) dial() (*ldap.Conn, error) {
 	address := fmt.Sprintf("%s:%d", c.LdapServer, c.LdapPort)
 
-	if c.TLSConfig != nil {
+
+	if c.TLSConfig != nil && !c.AllowInsecure {
 		return ldap.DialTLS("tcp", address, c.TLSConfig)
 	}
 
 	// This will send passwords in clear text (LDAP doesn't obfuscate password in any way),
 	// thus we use a flag to enable this mode
-	if c.TLSConfig == nil && c.AllowInsecure {
+	if c.AllowInsecure {
 		return ldap.Dial("tcp", address)
 	}
 
@@ -93,7 +94,6 @@ func (c *Client) dial() (*ldap.Conn, error) {
 }
 
 func (c *Client) newUserSearchRequest(username string) *ldap.SearchRequest {
-	// TODO(abrand): sanitize
 	userFilter := fmt.Sprintf("(%s=%s)", c.UserLoginAttribute, username)
 	return &ldap.SearchRequest{
 		BaseDN:       c.BaseDN,
